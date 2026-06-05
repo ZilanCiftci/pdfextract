@@ -1,36 +1,35 @@
-# PDF Comment Extractor (Rust)
+# Extrahera PDF-kommentarer (Rust)
 
-This tool extracts PDF annotation comments and writes them to an `.xlsx` file with these columns:
-- author
-- commenttext
-- filename
+Det här verktyget läser PDF-annoteringar och exporterar dem till en `.xlsx`-fil.
 
-## What it does
-- Input can be a single PDF file or a folder (scans subfolders recursively)
-- Reads PDF annotations from `/Annots`
-- Extracts `/T` as `author` and `/Contents` as `commenttext`
-- Writes all rows into one Excel file
+## Vad programmet gör
 
-## Build prerequisites (Windows)
-1. Install Rust toolchain from https://rustup.rs/
-2. Open a new terminal after installation
+- Välj en eller flera PDF-filer, eller en mapp (skannar undermappar rekursivt)
+- Läser annoteringar via `/Annots`
+- Hämtar författare från `/T` och kommentar från `/Contents`
+- Exkluderar annoteringar där författaren innehåller `AutoCAD` (t.ex. "AutoCAD SHX Text")
+- Skriver allt till en Excel-fil och kan lägga till i en befintlig fil
 
-## Build (small release exe)
+## Exportformat (kolumner)
+
+1. `author`
+2. `filename`
+3. `page`
+4. `commenttext`
+
+## Bygga (Windows)
+
+1. Installera Rust: https://rustup.rs/
+2. Öppna en ny terminal
+
 ```powershell
 cargo build --release
 ```
 
-Output binary:
+Körbar fil:
+
 - `target\release\pdfextract.exe`
 
-## Run examples
-```powershell
-# Single PDF
-.\target\release\pdfextract.exe C:\docs\sample.pdf C:\out\comments.xlsx
+## Användning
 
-# Folder (recursive)
-.\target\release\pdfextract.exe C:\docs C:\out\comments.xlsx
-```
-
-## Notes about exe size
-The release profile is tuned for size (`opt-level="z"`, LTO, single codegen unit, strip symbols, panic abort). Actual size depends on toolchain and target, but Rust is typically much smaller than Python-based single-file executables for this use case.
+Starta `.exe` och använd GUI:t för att välja PDF-filer/mapp och var Excel-filen ska sparas.
