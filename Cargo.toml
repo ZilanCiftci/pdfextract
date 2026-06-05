@@ -6,6 +6,13 @@ edition = "2021"
 [dependencies]
 lopdf = "0.34"
 rust_xlsxwriter = { version = "0.84", default-features = false }
+rfd = "0.15"
+calamine = "0.26"
+image = { version = "0.25", default-features = false, features = ["png"] }
+iced = { version = "0.12", features = ["tokio"] }
+
+[build-dependencies]
+embed-resource = "3"
 
 [profile.release]
 opt-level = "z"
