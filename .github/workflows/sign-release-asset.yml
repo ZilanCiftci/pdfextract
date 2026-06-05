@@ -22,7 +22,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   sign-only:
@@ -66,19 +66,36 @@ jobs:
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: https://neu.codesigning.azure.net/
-          signing-account-name: code-signing
+          signing-account-name: ibirico-ab
           certificate-profile-name: ibirico-certificate-profile
           files: ${{ github.workspace }}\${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
-      - name: Upload signed asset
-        uses: actions/upload-release-asset@v1
+      - name: Resolve release tag
+        id: tag
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
-          asset_name: ${{ (github.event.inputs.asset_name || 'pdfextract.exe') }}.signed.exe
-          asset_content_type: application/octet-stream
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = '${{ github.event.inputs.tag_name }}'
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $id = '${{ github.event.inputs.release_id }}'
+            if (-not [string]::IsNullOrWhiteSpace($id)) {
+              $tag = gh api repos/${{ github.repository }}/releases/$id --jq .tag_name
+            } else {
+              $tag = gh release view --repo ${{ github.repository }} --json tagName --jq .tagName
+            }
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) { throw 'Could not resolve a release tag.' }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload signed asset (overwrite)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $asset = '${{ github.event.inputs.asset_name }}'
+          if ([string]::IsNullOrWhiteSpace($asset)) { $asset = 'pdfextract.exe' }
+          gh release upload '${{ steps.tag.outputs.tag }}' "$asset" --repo ${{ github.repository }} --clobber
