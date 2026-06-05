@@ -7,6 +7,18 @@ on:
         description: "Release asset filename to sign"
         required: true
         default: "pdfextract.exe"
+      release_id:
+        description: "Release ID to sign (optional)"
+        required: false
+        default: ""
+      tag_name:
+        description: "Release tag to sign (optional)"
+        required: false
+        default: ""
+      use_latest:
+        description: "Use latest release when no ID/tag is provided"
+        required: false
+        default: "true"
 
 permissions:
   id-token: write
@@ -15,11 +27,30 @@ permissions:
 jobs:
   sign-only:
     runs-on: windows-2022
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - name: Download release asset
+      - name: Download release asset (by ID)
         uses: robinraju/release-downloader@v1.12
+        if: ${{ github.event.inputs.release_id != '' }}
         with:
-          releaseId: ${{ github.event.release.id }}
+          releaseId: ${{ github.event.inputs.release_id }}
+          fileName: ${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
+          out-file-path: .
+
+      - name: Download release asset (by tag)
+        uses: robinraju/release-downloader@v1.12
+        if: ${{ github.event.inputs.release_id == '' && github.event.inputs.tag_name != '' }}
+        with:
+          tag: ${{ github.event.inputs.tag_name }}
+          fileName: ${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
+          out-file-path: .
+
+      - name: Download release asset (latest)
+        uses: robinraju/release-downloader@v1.12
+        if: ${{ github.event.inputs.release_id == '' && github.event.inputs.tag_name == '' && github.event.inputs.use_latest == 'true' }}
+        with:
+          latest: true
           fileName: ${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
           out-file-path: .
 
