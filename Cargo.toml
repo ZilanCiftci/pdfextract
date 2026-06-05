@@ -1,0 +1,15 @@
+[package]
+name = "pdfextract"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lopdf = "0.34"
+rust_xlsxwriter = { version = "0.84", default-features = false }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
