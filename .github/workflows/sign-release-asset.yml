@@ -1,0 +1,48 @@
+name: Sign release asset
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  sign-only:
+    runs-on: windows-2022
+    steps:
+      - name: Download release asset
+        uses: robinraju/release-downloader@v1.12
+        with:
+          releaseId: ${{ github.event.release.id }}
+          fileName: pdfextract.exe
+          out-file-path: .
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign exe
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://neu.codesigning.azure.net/
+          signing-account-name: code-signing
+          certificate-profile-name: ibirico-certificate-profile
+          files: ${{ github.workspace }}\pdfextract.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Upload signed asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: pdfextract.exe
+          asset_name: pdfextract.signed.exe
+          asset_content_type: application/octet-stream
