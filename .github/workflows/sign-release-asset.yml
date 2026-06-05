@@ -1,8 +1,12 @@
 name: Sign release asset
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      asset_name:
+        description: "Release asset filename to sign"
+        required: true
+        default: "pdfextract.exe"
 
 permissions:
   id-token: write
@@ -16,7 +20,7 @@ jobs:
         uses: robinraju/release-downloader@v1.12
         with:
           releaseId: ${{ github.event.release.id }}
-          fileName: pdfextract.exe
+          fileName: ${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
           out-file-path: .
 
       - name: Azure login (OIDC)
@@ -32,7 +36,7 @@ jobs:
           endpoint: https://neu.codesigning.azure.net/
           signing-account-name: code-signing
           certificate-profile-name: ibirico-certificate-profile
-          files: ${{ github.workspace }}\pdfextract.exe
+          files: ${{ github.workspace }}\${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
@@ -43,6 +47,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: pdfextract.exe
-          asset_name: pdfextract.signed.exe
+          asset_path: ${{ github.event.inputs.asset_name || 'pdfextract.exe' }}
+          asset_name: ${{ (github.event.inputs.asset_name || 'pdfextract.exe') }}.signed.exe
           asset_content_type: application/octet-stream
