@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use iced::alignment::{Horizontal, Vertical};
 use iced::widget::{
-    button, column, container, progress_bar, row, scrollable, text, text_input, Space,
+    button, column, container, progress_bar, row, scrollable, text, text_input, svg, Space,
 };
 use iced::{time, Application, Command, Element, Length, Settings, Size, Subscription, Theme};
 use lopdf::{Dictionary, Document, Object};
@@ -81,7 +81,7 @@ impl Application for App {
     }
 
     fn title(&self) -> String {
-        "PDF Kommentarsextraktor".to_string()
+        "Extrahera PDF-kommentarer".to_string()
     }
 
     fn theme(&self) -> Self::Theme {
@@ -199,16 +199,6 @@ impl Application for App {
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        let header = container(
-            row![
-                Space::with_width(Length::Fixed(6.0)),
-                text("PDF Kommentarsextraktor").size(22),
-            ]
-            .align_items(iced::Alignment::Center),
-        )
-        .padding(14)
-        .width(Length::Fill);
-
         let mut list_col = column![].spacing(6);
         if self.pdf_files.is_empty() {
             list_col = list_col.push(text(
@@ -222,14 +212,24 @@ impl Application for App {
                     .unwrap_or("?")
                     .to_string();
 
-                let mut remove = button(text("✕")).padding([2, 8]);
+                let delete_icon = svg(
+                    svg::Handle::from_memory(include_bytes!("../assets/delete.svg")),
+                )
+                .width(Length::Fixed(14.0))
+                .height(Length::Fixed(14.0));
+
+                let mut remove = button(delete_icon)
+                    .padding([2, 2])
+                    .width(Length::Fixed(18.0))
+                    .height(Length::Fixed(18.0))
+                    .style(delete_button_style());
                 if !self.running {
                     remove = remove.on_press(Message::RemoveFile(i));
                 }
 
                 list_col = list_col.push(
                     row![remove, text(name)]
-                        .spacing(8)
+                        .spacing(6)
                         .align_items(iced::Alignment::Center),
                 );
             }
@@ -260,12 +260,14 @@ impl Application for App {
                 text(format!("{} fil(er) valda", self.pdf_files.len())),
                 Space::with_height(Length::Fixed(6.0)),
                 container(list)
-                    .padding(8),
+                    .padding(8)
+                    .style(list_style()),
             ]
             .spacing(4),
         )
         .padding(12)
-        .width(Length::Fill);
+        .width(Length::Fill)
+        .style(group_style());
 
         let output_exists = !self.output_path.is_empty() && Path::new(&self.output_path).exists();
 
@@ -294,7 +296,8 @@ impl Application for App {
             .spacing(4),
         )
         .padding(12)
-        .width(Length::Fill);
+        .width(Length::Fill)
+        .style(group_style());
 
         let can_run = !self.running && !self.pdf_files.is_empty() && !self.output_path.is_empty();
         let mut run_btn = button(
@@ -355,7 +358,7 @@ impl Application for App {
         .padding(16)
         .width(Length::Fill);
 
-        container(column![header, content])
+        container(column![content])
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
@@ -374,7 +377,13 @@ fn black_button_style() -> iced::theme::Button {
     iced::theme::Button::Custom(Box::new(BlackButton))
 }
 
+fn delete_button_style() -> iced::theme::Button {
+    iced::theme::Button::Custom(Box::new(DeleteButton))
+}
+
 struct BlackButton;
+
+struct DeleteButton;
 
 impl button::StyleSheet for BlackButton {
     type Style = Theme;
@@ -407,6 +416,42 @@ impl button::StyleSheet for BlackButton {
             color: iced::Color::from_rgb8(0xC8, 0xC8, 0xC8),
             width: 1.0,
             radius: 6.0.into(),
+        };
+        s
+    }
+}
+
+impl button::StyleSheet for DeleteButton {
+    type Style = Theme;
+
+    fn active(&self, _style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            background: Some(iced::Background::Color(iced::Color::from_rgb8(0xD9, 0x2D, 0x20))),
+            text_color: iced::Color::WHITE,
+            border: iced::Border {
+                color: iced::Color::from_rgb8(0xD9, 0x2D, 0x20),
+                width: 1.0,
+                radius: 999.0.into(),
+            },
+            shadow_offset: iced::Vector::new(0.0, 0.0),
+            shadow: iced::Shadow::default(),
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        let mut s = self.active(style);
+        s.background = Some(iced::Background::Color(iced::Color::from_rgb8(0xB4, 0x23, 0x18)));
+        s
+    }
+
+    fn disabled(&self, style: &Self::Style) -> button::Appearance {
+        let mut s = self.active(style);
+        s.background = Some(iced::Background::Color(iced::Color::from_rgb8(0xF2, 0xB8, 0xB5)));
+        s.text_color = iced::Color::from_rgb8(0x88, 0x88, 0x88);
+        s.border = iced::Border {
+            color: iced::Color::from_rgb8(0xF2, 0xB8, 0xB5),
+            width: 1.0,
+            radius: 999.0.into(),
         };
         s
     }
@@ -456,6 +501,52 @@ impl container::StyleSheet for StatusStyle {
             background: Some(iced::Background::Color(self.background)),
             border: iced::Border {
                 color: self.border,
+                width: 1.0,
+                radius: 6.0.into(),
+            },
+            text_color: None,
+            shadow: iced::Shadow::default(),
+        }
+    }
+}
+
+fn group_style() -> iced::theme::Container {
+    iced::theme::Container::Custom(Box::new(GroupStyle))
+}
+
+struct GroupStyle;
+
+impl container::StyleSheet for GroupStyle {
+    type Style = Theme;
+
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Some(iced::Background::Color(iced::Color::WHITE)),
+            border: iced::Border {
+                color: iced::Color::from_rgb8(0xE3, 0xE3, 0xE3),
+                width: 1.0,
+                radius: 8.0.into(),
+            },
+            text_color: None,
+            shadow: iced::Shadow::default(),
+        }
+    }
+}
+
+fn list_style() -> iced::theme::Container {
+    iced::theme::Container::Custom(Box::new(ListStyle))
+}
+
+struct ListStyle;
+
+impl container::StyleSheet for ListStyle {
+    type Style = Theme;
+
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            background: Some(iced::Background::Color(iced::Color::from_rgb8(0xFA, 0xFA, 0xFA))),
+            border: iced::Border {
+                color: iced::Color::from_rgb8(0xDD, 0xDD, 0xDD),
                 width: 1.0,
                 radius: 6.0.into(),
             },
@@ -684,7 +775,8 @@ fn extract_comments_from_pdf(path: &Path, filename: &str) -> Result<Vec<CommentR
             }
 
             let author = get_string_from_dict(&doc, annot_dict, b"T").unwrap_or_default();
-            if author.to_ascii_lowercase().contains("autocad") {
+            let author_norm = normalize_author(&author);
+            if author_norm.contains("autocad shx text") || author_norm.contains("autocad") {
                 continue;
             }
             rows.push(CommentRow {
@@ -748,6 +840,11 @@ fn decode_pdf_text(bytes: &[u8]) -> String {
         return s.to_string();
     }
     bytes.iter().map(|&b| b as char).collect()
+}
+
+fn normalize_author(value: &str) -> String {
+    let filtered: String = value.chars().filter(|c| !c.is_control()).collect();
+    filtered.trim().to_ascii_lowercase()
 }
 
 // ── XLSX writer ───────────────────────────────────────────────────────────────
